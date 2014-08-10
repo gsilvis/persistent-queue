@@ -179,7 +179,7 @@ fix2l (S4 l1 l3 l4) = case l3 of
       L2LL (Level kl (RH1 kr)) n1 n2 -> 
         S4 m1 (L3L (Level kl (RH1 kr)) n1 n2 m3) l4
   L3R (Level (LH1 kl) kr) m1 m2 m3 -> case m3 of
-    L3L (Level (LH2 l) (RH1 r)) n1 n2 n3@(L3E) -> case n2 of
+    L3L (Level (LH2 l) (RH1 r)) n1 n2 n3 -> case n2 of
       L2LL (Level (LH0 ()) (RH1 ir)) o1 o2 ->
         case npushl (LN l) (S4 n1 (L3L (Level (LH0 ()) (RH1 ir)) o1 o2 n3) l4) of
         S4 p1 p3 p4 -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 result) p4 where
