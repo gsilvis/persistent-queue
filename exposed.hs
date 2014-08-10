@@ -113,7 +113,8 @@ singleton :: a -> Queue a
 singleton a = Q00 (S4 L1E L3E (L4E1 (L0 a)))
 
 doubleton :: a -> Queue a
-doubleton a = Q00 (S4 (L1L (Level (LH1 (L0 a)) (RH1 (L0 a))) L1E) L3E (L4E0 ()))
+doubleton a =
+  Q00 (S4 (L1L (Level (LH1 (L0 a)) (RH1 (L0 a))) L1E) L3E (L4E0 ()))
 
 
 bestowL :: L1 a top mid ->
@@ -179,19 +180,25 @@ fix2l (S4 l1 l3 l4) = case l3 of
         S4 m1 (L3L (Level kl (RH1 kr)) n1 n2 m3) l4
   L3R (Level (LH1 kl) kr) m1 m2 m3 -> case m3 of
     L3L (Level (LH2 l) (RH1 r)) n1 n2 n3@(L3E) -> case n2 of
-      L2LL (Level (LH0 ()) (RH1 ir)) o1 o2 -> case npushl (LN l) (S4 n1 (L3L (Level (LH0 ()) (RH1 ir)) o1 o2 n3) l4) of
-        S4 p1 p3 p4 -> case p3 of
-          L3E -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 (L3L (Level (LH0 ()) (RH1 r)) p1 L2LE L3E)) p4
-          q3@(L3R _ _ _ _) -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 (L3L (Level (LH0 ()) (RH1 r)) p1 L2LE q3)) p4
-          (L3L inner q1 q2 q3) -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 (L3L (Level (LH0 ()) (RH1 r)) p1 (L2LL inner q1 q2) q3)) p4
+      L2LL (Level (LH0 ()) (RH1 ir)) o1 o2 ->
+        case npushl (LN l) (S4 n1 (L3L (Level (LH0 ()) (RH1 ir)) o1 o2 n3) l4) of
+        S4 p1 p3 p4 -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 result) p4 where
+          result = case p3 of
+            L3E -> L3L (Level (LH0 ()) (RH1 r)) p1 L2LE L3E
+            q3@(L3R _ _ _ _) -> L3L (Level (LH0 ()) (RH1 r)) p1 L2LE q3
+            (L3L inner q1 q2 q3) ->
+              L3L (Level (LH0 ()) (RH1 r)) p1 (L2LL inner q1 q2) q3
       L2LE -> case npushl (LN l) (S4 n1 n3 l4) of
-        S4 o1 o3 o4 -> case o3 of
-          L3E -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 (L3L (Level (LH0 ()) (RH1 r)) o1 L2LE L3E)) o4
-          p3@(L3R _ _ _ _) -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 (L3L (Level (LH0 ()) (RH1 r)) o1 L2LE p3)) o4
-          L3L inner p1 p2 p3 -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 (L3L (Level (LH0 ()) (RH1 r)) o1 (L2LL inner p1 p2) p3)) o4 
+        S4 o1 o3 o4 -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 result) o4 where
+          result = case o3 of
+            L3E -> (L3L (Level (LH0 ()) (RH1 r)) o1 L2LE L3E)
+            p3@(L3R _ _ _ _) -> (L3L (Level (LH0 ()) (RH1 r)) o1 L2LE p3)
+            L3L inner p1 p2 p3 ->
+              (L3L (Level (LH0 ()) (RH1 r)) o1 (L2LL inner p1 p2) p3)
     L3E -> case l4 of
-      L4 (Level (LH2 l) r) rest -> case npushl (LN l) rest of
-        new -> (S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4 (Level (LH0 ()) r) new))
+      L4 (Level (LH2 l) r) rest ->
+        (S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4 (Level (LH0 ()) r) new))
+          where new = npushl (LN l) rest
       L4E0 () -> (S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4E0 ()))
       L4E1 a -> (S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4E1 a))
   L3E -> case l4 of
@@ -199,5 +206,10 @@ fix2l (S4 l1 l3 l4) = case l3 of
       new -> S4 l1 L3E (L4 (Level (LH0 ()) r) new)
     L4E0 () -> S4 l1 L3E (L4E0 ())
     L4E1 a -> S4 l1 L3E (L4E1 a)
-    
 
+
+pushl :: a -> Queue a -> Queue a
+pushl a (Q00 q) = Q20 (npushl (L0 a) q)
+pushl a (Q02 q) = Q22 (npushl (L0 a) q)
+pushl a (Q20 q) = Q20 (npushl (L0 a) (fix2l q))
+pushl a (Q22 q) = Q22 (npushl (L0 a) (fix2l q))
