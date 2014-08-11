@@ -89,6 +89,8 @@ data L3 a :: * -> * -> * -> * -> * -> * -> * -> * where
 data Final c = Final1 c
              | Final2 c c
              | Final3 c c c
+             | Final4 c c c c
+             | Final5 c c c c c
 
 data L4 a :: * -> * -> * -> * where
   L4E :: Final (NLayered top Pair a) ->
@@ -173,10 +175,11 @@ npushl' a (S4 l1 l3 l4) = case l1 of
     L3E -> case l4 of
       L4 (Level (LH0 ()) r) rest ->
         pushlevel (LevelUM (Level (LH1 a) r)) rest
-      L4E (Final1 b) -> S4 L1E L3E (L4E (Final2 a b))
-      L4E (Final2 b c) -> S4 L1E L3E (L4E (Final3 a b c))
-      L4E (Final3 l r c) ->
-        S4 (L1L (Level (LH1 a) (RH1 c)) L1E) L3E (L4E (Final1 (LN (Pair l r))))
+      L4E (Final1 b) ->       S4 L1E L3E (L4E (Final2 a b))
+      L4E (Final2 b c) ->     S4 L1E L3E (L4E (Final3 a b c))
+      L4E (Final3 b c d) ->   S4 L1E L3E (L4E (Final4 a b c d))
+      L4E (Final4 b c d e) -> S4 L1E L3E (L4E (Final5 a b c d e))
+      L4E (Final5 p q r s b) -> S4 (L1L (Level (LH1 a) (RH1 b)) L1E) L3E (L4E (Final2 (LN (Pair p q)) (LN (Pair r s))))
 
 npushl :: NLayered n Pair a ->
           Queue' a n L0Exposed rexposure ->
