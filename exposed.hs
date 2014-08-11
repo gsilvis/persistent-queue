@@ -229,3 +229,90 @@ pushl a (Q00 q) = Q20 (npushl (L0 a) q)
 pushl a (Q02 q) = Q22 (npushl (L0 a) q)
 pushl a (Q20 q) = Q20 (npushl (L0 a) (fix2l q))
 pushl a (Q22 q) = Q22 (npushl (L0 a) (fix2l q))
+
+
+npopl :: S4 a n L2Exposed rexposure ->
+         (NLayered n Pair a, Queue' a n L0Exposed rexposure)
+npopl (S4 l1 l3 l4) = case l1 of
+  L1L (Level (LH1 a) (RH1 r)) m1 -> (a, QN rest) where
+    rest = pushlevel (LevelMU (Level (LH0 ()) (RH1 r))) (S4 m1 l3 l4)
+  L1E -> case l3 of
+    L3L (Level (LH2 (Pair a l)) (RH1 r)) m1 m2 m3 -> (a, QN rest) where
+      rest = pushlevel (LevelUU (Level (LH1 l) (RH1 r))) $ case m2 of
+        L2LE -> S4 m1 m3 l4
+        L2LL (Level kl (RH1 kr)) n1 n2 ->
+          S4 m1 (L3L (Level kl (RH1 kr)) n1 n2 m3) l4
+    L3R (Level (LH1 a) r) m1 m2 m3 -> (a, QN rest) where
+      rest = pushlevel (LevelMM (Level (LH0 ()) r)) $ case m2 of
+        L2RE -> S4 m1 m3 l4
+        L2RL (Level (LH1 kl) kr) n1 n2 ->
+          S4 m1 (L3R (Level (LH1 kl) kr) n1 n2 m3) l4
+    L3E -> case l4 of
+      L4 (Level (LH2 (Pair a l)) r) inner -> (a, QN rest) where
+        rest = pushlevel (LevelUM (Level (LH1 l) r)) inner
+      L4E (Final5 a b c d e) -> (a, QN (S4 L1E L3E (L4E (Final4 b c d e))))
+      L4E (Final4 a b c d) ->   (a, QN (S4 L1E L3E (L4E (Final3 b c d))))
+      L4E (Final3 a b c) ->     (a, QN (S4 L1E L3E (L4E (Final2 b c))))
+      L4E (Final2 a b) ->       (a, QN (S4 L1E L3E (L4E (Final1 b))))
+      L4E (Final1 a) -> (a, Q0)
+
+fix0l :: Queue' a n L0Exposed rexposure ->
+         Queue' a n L2Exposed rexposure
+fix0l Q0 = Q0
+fix0l (QN (S4 l1 l3 l4)) = QN $ case l3 of
+  L3L (Level (LH0 ()) (RH1 r)) m1 m2 m3 ->
+    case npopl poppee of
+      (LN l, QN result) -> bestowL l1 (Level (LH2 l) (RH1 r)) result
+      (LN (Pair a b), Q0) -> S4 l1 L3E (L4E (Final3 a b r))
+    where
+      poppee = case m2 of
+        L2LE -> S4 m1 m3 l4
+        L2LL (Level kl (RH1 kr)) n1 n2 ->
+          S4 m1 (L3L (Level kl (RH1 kr)) n1 n2 m3) l4
+  L3R (Level (LH1 kl) kr) m1 m2 m3 -> case m3 of
+    L3L (Level (LH0 ()) (RH1 r)) n1 n2 n3 -> case n2 of
+      L2LL (Level (LH2 l) (RH1 ir)) o1 o2 ->
+        case npopl (S4 n1 (L3L (Level (LH2 l) (RH1 ir)) o1 o2 n3) l4) of
+          (LN l, QN (S4 p1 p3 p4)) ->
+            S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 result) p4 where
+              result = case p3 of
+                L3E -> L3L (Level (LH2 l) (RH1 r)) p1 L2LE L3E
+                q3@(L3R _ _ _ _) -> L3L (Level (LH2 l) (RH1 r)) p1 L2LE q3
+                L3L inner q1 q2 q3 ->
+                  L3L (Level (LH2 l) (RH1 r)) p1 (L2LL inner q1 q2) q3
+          (LN (Pair a b), Q0) ->
+            S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4E (Final3 a b r))
+      L2LE -> case npopl (S4 n1 n3 l4) of
+        (LN l, QN (S4 o1 o3 o4)) ->
+          S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 result) o4 where
+            result = case o3 of
+              L3E -> L3L (Level (LH2 l) (RH1 r)) o1 L2LE L3E
+              p3@(L3R _ _ _ _) -> L3L (Level (LH2 l) (RH1 r)) o1 L2LE p3
+              L3L inner p1 p2 p3 ->
+                L3L (Level (LH2 l) (RH1 r)) o1 (L2LL inner p1 p2) p3
+        (LN (Pair a b), Q0) ->
+          S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4E (Final3 a b r))
+    L3E -> case l4 of
+      L4 (Level (LH0 ()) r) rest ->
+        S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) $ case npopl rest of
+          (LN l, QN new) -> L4 (Level (LH2 l) r) new
+          (LN (Pair a b), Q0) -> case r of
+            RH0 () -> L4E (Final2 a b)
+            RH2 (Pair q r) -> L4E (Final4 a b q r)
+      L4E final -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4E final)
+  L3E -> case l4 of
+    L4 (Level (LH0 ()) r) rest -> S4 l1 L3E $ case npopl rest of
+      (LN l, QN new) -> L4 (Level (LH2 l) r) new
+      (LN (Pair a b), Q0) -> case r of
+        RH0 () -> L4E (Final2 a b)
+        RH2 (Pair q r) -> L4E (Final4 a b q r)
+    L4E final -> S4 l1 L3E (L4E final)
+
+
+popl :: Queue a -> Maybe (a, Queue a)
+popl (Q00 q) = popl (Q20 (fix0l q))
+popl (Q02 q) = popl (Q22 (fix0l q))
+popl (Q20 (QN q)) = Just $ case npopl q of
+  (L0 a, new) -> (a, Q00 new)
+popl (Q22 (QN q)) = Just $ case npopl q of
+  (L0 a, new) -> (a, Q02 new)
