@@ -5,7 +5,7 @@ data Succ n
 
 data NLayered n :: (* -> *) -> (* -> *) where
   L0 :: a -> NLayered Zero f a
-  LN :: f (NLayered n f a) -> NLayered (Succ n) f s
+  LN :: f (NLayered n f a) -> NLayered (Succ n) f a
 
 data Pair a = Pair a a
 
