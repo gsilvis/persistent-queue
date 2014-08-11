@@ -116,14 +116,13 @@ data Queue a = Q00 (Queue' a Zero L0Exposed R0Exposed)
              | Q22 (Queue' a Zero L2Exposed R2Exposed)
 
 empty :: Queue a
-empty = Q00 Q0  --Q00 (S4 L1E L3E (L4E0 ()))
+empty = Q00 Q0
 
 singleton :: a -> Queue a
 singleton a = Q00 (QN (S4 L1E L3E (L4E (Final1 (L0 a)))))
 
 doubleton :: a -> Queue a
 doubleton a = Q00 (QN (S4 L1E L3E (L4E (Final2 (L0 a) (L0 a)))))
---  Q00 (S4 (L1L (Level (LH1 (L0 a)) (RH1 (L0 a))) L1E) L3E (L4E0 ()))
 
 
 bestowL :: L1 a top mid ->
@@ -179,7 +178,8 @@ npushl' a (S4 l1 l3 l4) = case l1 of
       L4E (Final2 b c) ->     S4 L1E L3E (L4E (Final3 a b c))
       L4E (Final3 b c d) ->   S4 L1E L3E (L4E (Final4 a b c d))
       L4E (Final4 b c d e) -> S4 L1E L3E (L4E (Final5 a b c d e))
-      L4E (Final5 p q r s b) -> S4 (L1L (Level (LH1 a) (RH1 b)) L1E) L3E (L4E (Final2 (LN (Pair p q)) (LN (Pair r s))))
+      L4E (Final5 p q r s b) -> S4 (L1L (Level (LH1 a) (RH1 b)) L1E)
+        L3E (L4E (Final2 (LN (Pair p q)) (LN (Pair r s))))
 
 npushl :: NLayered n Pair a ->
           Queue' a n L0Exposed rexposure ->
