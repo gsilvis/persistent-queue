@@ -213,15 +213,14 @@ fix2l (QN (S4 l1 l3 l4)) = QN $ case l3 of
             p3@(L3R _ _ _ _) -> (L3L (Level (LH0 ()) (RH1 r)) o1 L2LE p3)
             L3L inner p1 p2 p3 ->
               (L3L (Level (LH0 ()) (RH1 r)) o1 (L2LL inner p1 p2) p3)
-    L3E -> case l4 of
+    L3E -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) $ case l4 of
       L4 (Level (LH2 l) r) rest ->
-        (S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4 (Level (LH0 ()) r) new))
-          where new = npushl' (LN l) rest
-      L4E final -> (S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4E final))
-  L3E -> case l4 of
-    L4 (Level (LH2 l) r) rest -> case npushl' (LN l) rest of
-      new -> S4 l1 L3E (L4 (Level (LH0 ()) r) new)
-    L4E final -> S4 l1 L3E (L4E final)
+        L4 (Level (LH0 ()) r) (npushl' (LN l) rest)
+      L4E final -> L4E final
+  L3E -> S4 l1 L3E $ case l4 of
+    L4 (Level (LH2 l) r) rest ->
+      L4 (Level (LH0 ()) r) (npushl' (LN l) rest)
+    L4E final -> L4E final
 
 
 pushl :: a -> Queue a -> Queue a
@@ -292,21 +291,20 @@ fix0l (QN (S4 l1 l3 l4)) = QN $ case l3 of
                 L3L (Level (LH2 l) (RH1 r)) o1 (L2LL inner p1 p2) p3
         (LN (Pair a b), Q0) ->
           S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4E (Final3 a b r))
-    L3E -> case l4 of
-      L4 (Level (LH0 ()) r) rest ->
-        S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) $ case npopl rest of
+    L3E -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) $ case l4 of
+      L4 (Level (LH0 ()) r) rest -> case npopl rest of
           (LN l, QN new) -> L4 (Level (LH2 l) r) new
           (LN (Pair a b), Q0) -> case r of
             RH0 () -> L4E (Final2 a b)
             RH2 (Pair q r) -> L4E (Final4 a b q r)
-      L4E final -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3E) (L4E final)
-  L3E -> case l4 of
-    L4 (Level (LH0 ()) r) rest -> S4 l1 L3E $ case npopl rest of
+      L4E final -> L4E final
+  L3E -> S4 l1 L3E $ case l4 of
+    L4 (Level (LH0 ()) r) rest -> case npopl rest of
       (LN l, QN new) -> L4 (Level (LH2 l) r) new
       (LN (Pair a b), Q0) -> case r of
         RH0 () -> L4E (Final2 a b)
         RH2 (Pair q r) -> L4E (Final4 a b q r)
-    L4E final -> S4 l1 L3E (L4E final)
+    L4E final -> L4E final
 
 
 popl :: Queue a -> Maybe (a, Queue a)
@@ -379,15 +377,14 @@ fix2r (QN (S4 l1 l3 l4)) = QN $ case l3 of
             p3@(L3L _ _ _ _) -> (L3R (Level (LH1 l) (RH0 ())) o1 L2RE p3)
             L3R inner p1 p2 p3 ->
               (L3R (Level (LH1 l) (RH0 ())) o1 (L2RL inner p1 p2) p3)
-    L3E -> case l4 of
+    L3E -> S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3E) $ case l4 of
       L4 (Level l (RH2 r)) rest ->
-        (S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3E) (L4 (Level l (RH0 ())) new))
-          where new = npushr' (LN r) rest
-      L4E final -> (S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3E) (L4E final))
-  L3E -> case l4 of
-    L4 (Level l (RH2 r)) rest -> case npushr' (LN r) rest of
-      new -> S4 l1 L3E (L4 (Level l (RH0 ())) new)
-    L4E final -> S4 l1 L3E (L4E final)
+        L4 (Level l (RH0 ())) (npushr' (LN r) rest)
+      L4E final -> L4E final
+  L3E -> S4 l1 L3E $ case l4 of
+    L4 (Level l (RH2 r)) rest ->
+      L4 (Level l (RH0 ())) (npushr' (LN r) rest)
+    L4E final -> L4E final
 
 pushr :: a -> Queue a -> Queue a
 pushr a (Q00 q) = Q02 (npushr (L0 a) q)
@@ -401,7 +398,6 @@ npopr :: S4 a n lexposure R2Exposed ->
 npopr (S4 l1 l3 l4) = case l1 of
   L1L (Level (LH1 l) (RH1 a)) m1 -> (a, QN rest) where
     rest = pushlevel (LevelUM (Level (LH1 l) (RH0 ()))) (S4 m1 l3 l4)
-
   L1E -> case l3 of
     L3R (Level (LH1 l) (RH2 (Pair r a))) m1 m2 m3 -> (a, QN rest) where
       rest = pushlevel (LevelUU (Level (LH1 l) (RH1 r))) $ case m2 of
@@ -413,7 +409,6 @@ npopr (S4 l1 l3 l4) = case l1 of
         L2LE -> S4 m1 m3 l4
         L2LL (Level kl (RH1 kr)) n1 n2 ->
           S4 m1 (L3L (Level kl (RH1 kr)) n1 n2 m3) l4
-
     L3E -> case l4 of
       L4 (Level l (RH2 (Pair r a))) inner -> (a, QN rest) where
         rest = pushlevel (LevelMU (Level l (RH1 r))) inner
@@ -460,21 +455,20 @@ fix0r (QN (S4 l1 l3 l4)) = QN $ case l3 of
                 L3R (Level (LH1 l) (RH2 r)) o1 (L2RL inner p1 p2) p3
         (LN (Pair a b), Q0) ->
           S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3E) (L4E (Final3 l a b))
-    L3E -> case l4 of
-      L4 (Level l (RH0 ())) rest ->
-        S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3E) $ case npopr rest of
+    L3E -> S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3E) $ case l4 of
+      L4 (Level l (RH0 ())) rest -> case npopr rest of
           (LN r, QN new) -> L4 (Level l (RH2 r)) new
           (LN (Pair a b), Q0) -> case l of
             LH0 () -> L4E (Final2 a b)
             LH2 (Pair q r) -> L4E (Final4 q r a b)
-      L4E final -> S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3E) (L4E final)
-  L3E -> case l4 of
-    L4 (Level l (RH0 ())) rest -> S4 l1 L3E $ case npopr rest of
+      L4E final -> L4E final
+  L3E -> S4 l1 L3E $ case l4 of
+    L4 (Level l (RH0 ())) rest -> case npopr rest of
       (LN r, QN new) -> L4 (Level l (RH2 r)) new
       (LN (Pair a b), Q0) -> case l of
         LH0 () -> L4E (Final2 a b)
         LH2 (Pair q r) -> L4E (Final4 q r a b)
-    L4E final -> S4 l1 L3E (L4E final)
+    L4E final -> L4E final
 
 
 popr :: Queue a -> Maybe (a, Queue a)
