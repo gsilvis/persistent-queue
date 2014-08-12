@@ -1,0 +1,104 @@
+This code implements a pure functional deque in Haskell.  The deque supports
+pushing and popping from either side, and all four operations are worst-case
+O(1).  The data structure and algorithms necessary for this are complicated
+enough that, as far as I can tell, it isn't even widely known that it's
+possible.  People usually resort to using a data structure such as a finger
+tree, which only gives O(1) amortized time for operations, and worst case
+log(n).  (Another option is the two-stack implementation, which is O(1)
+amortized, but has worst case O(n).)
+
+The first description of a pure worst-case O(1) algorithm that I have found is
+in a paper by Haim Kaplan and Robert E Tarjan, "Purely Functional, Real-Time
+Deques with Catenation".  As the name implies, they also make an even more
+complicated data structure that supports concatenation.
+
+The code is based on a later description, available only in course notes at
+http://www.cs.princeton.edu/courses/archive/fall03/cs528/handouts/Notes%20on%20Catenable%20Deques.doc
+
+-----------------------
+
+The data structure is fundementally a stack, each element of which is a pair
+of buffers: a left buffer and a right buffer.  The buffers hold 0, 1, or 2
+objects each.  In the topmost object, buffers hold elements of the deque; in
+the layer below that, the buffers hold pairs; below that, pairs of pairs, and
+so on and so forth.  (The ends of the queue are at the top level, and each
+level below is in the middle of the level above it.)
+
+At the bottom of the queue is a buffer that holds strictly betwen 1 and 5
+elements.  This is a change from the lecture notes, to remove some special
+cases.
+
+Buffers with exactly 1 element in them are nicer to work with: you can safely
+add or remove an item from them.  When a buffer has 0 elements, you can fix
+this by drawing up an from the buffer below it; similarly, if it has 2
+elements, you can push them into the buffer below it.  (Remember that the
+buffer below contains pairs.)  This is possible as long as the buffer below
+doesn't also have 2 (or 0, respectively) elements.
+
+So, the following invariant is held: On each side of the deque, the buffers of
+size 0 and 2 alternate, ignoring any intervening buffers of size 1.  This is
+enforced by keeping track of the "exposure" of each side of the deque.  A
+deque is left-0-exposed if the top non-1-sized buffer is size-0, etc.  (The
+bottom buffer does not count for this.)  (If there are no non-1-sized buffers
+on one side, it can safely be considered either 0- or 2-exposed.)
+
+If a queue is left-0-exposed, you can safely push to the left side: this makes
+the queue left-2-exposed.  Similarly, if a queue is left-2-exposed, you can
+safely pop from the left side, making it left-0-exposed.  These operations
+only touch the very top buffer on the left, and are clealy O(1).
+
+If a queue is left-0-exposed, it can also be converted to being
+left-2-exposed.  To do this, you must (somehow) find the uppermost left buffer
+with size 0, and pull an element up from the buffer below it.  A similar
+process converts 2-exposed buffers to 0-exposed buffers.
+
+------------------
+
+The most tricky thing that the lecture notes don't cover is how exactly to
+make it so you can always find the top non-1-sized buffers.
+
+To do this, conceptually split the stack up in this way: first find all levels
+where both buffers are non-1-sized.  Each points to the one below it.  (This
+corresponds to the S4 and L4 types.)
+
+Then, inside each of these segments, find the first non-1-sized buffer on
+either side; below that, find the first non-1-sized buffer on the OTHER side;
+then continue, alternating sides.  (This corresponds to L3.)
+
+Inside each of these segments, if the first buffer was on the (e.g.) right,
+find all of the right-buffers with size 0 or 2.  (This corresponds to L2R and
+L2L.)
+
+Finally, inside these segments are levels with two buffers of size 1.  (This
+corresponds to L1.)
+
+The vast majority of the code is to maintain this structure correctly, and is
+frankly quite painful to look at.  I'm sorry.
+
+-------------------
+
+I'm using GADTs for quite a few different purposes in this code.  The first is
+to make it possible for each buffer to contain pairs of the elements of the
+buffer above it.  This would be fairly straight-forward if the entire
+structure were a stack.  Unfortunately it isn't.  So, type-level natural
+numbers it is!
+
+The second purpose is to keep track of the 0-2-alternation invariant: this is
+what L0Exposed, L2Exposed, R0Exposed, and R2Exposed are for.
+
+The third purpose is to deal with the right-left alternation, and should
+probably really be removed, and turned into an honest type distinction.  This
+is what Leftist and Rightist are for.
+
+Finally, the buffer type uses the types LModifying, LUnmodifying, RModifying,
+and RUnmodifying, to condense some code slightly.  They probably aren't
+necessary, but they aren't causing any typechecking problems, unlike Leftist
+and Rightist.
+
+-------------------
+
+This code compiles correctly under GHC-7.8.2, and definitely fails to under
+GHC-7.4.1 (both tested in Debian Wheezy)
+
+Under GHC-7.8.2, a fair number of "incomplete case statement" warnings are
+generated, but filling in any of those causes "unreachable code".  Peculiar.
