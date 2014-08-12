@@ -253,13 +253,13 @@ fix2l (QN (S4 l1 l3 l4)) = QN $ case l3 of
     bestowL l1 (Level (LH0 ()) (RH1 r)) $
     npushl' (LN l) $
     push2l m1 m2 m3 l4
-  L3R (Level (LH1 kl) kr) m1 m2 m3 -> case m3 of
+  L3R (Level (LH1 kl) kr) m1 m2 m3 ->
+    bestowR l1 (Level (LH1 kl) kr) $ case m3 of
     L3LL (Level (LH2 l) (RH1 r)) n1 n2 n3 ->
-      bestowR l1 (Level (LH1 kl) kr) $
       bestow2L m1 m2 (Level (LH0 ()) (RH1 r)) $
       npushl' (LN l) $
       push2l n1 n2 n3 l4
-    L3LE -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3LE) $ case l4 of
+    L3LE -> push2r m1 m2 L3LE $ case l4 of
       L4 (Level (LH2 l) r) rest ->
         L4 (Level (LH0 ()) r) (npushl' (LN l) rest)
       L4E final -> L4E final
@@ -384,13 +384,13 @@ fix2r (QN (S4 l1 l3 l4)) = QN $ case l3 of
     bestowR l1 (Level (LH1 l) (RH0 ())) $
     npushr' (LN r) $
     push2r m1 m2 m3 l4
-  L3L (Level kl (RH1 kr)) m1 m2 m3 -> case m3 of
+  L3L (Level kl (RH1 kr)) m1 m2 m3 ->
+    bestowL l1 (Level kl (RH1 kr)) $ case m3 of
     L3RL (Level (LH1 l) (RH2 r)) n1 n2 n3 ->
-      bestowL l1 (Level kl (RH1 kr)) $
       bestow2R m1 m2 (Level (LH1 l) (RH0 ())) $
       npushr' (LN r) $
       push2r n1 n2 n3 l4
-    L3RE -> S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3RE) $ case l4 of
+    L3RE -> push2l m1 m2 L3RE $ case l4 of
       L4 (Level l (RH2 r)) rest ->
         L4 (Level l (RH0 ())) (npushr' (LN r) rest)
       L4E final -> L4E final
