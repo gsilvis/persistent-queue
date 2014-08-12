@@ -307,16 +307,15 @@ fix0l (QN (S4 l1 l3 l4)) = QN $ case l3 of
     case npopl (push2l m1 m2 m3 l4) of
       (LN l, QN result) -> bestowL l1 (Level (LH2 l) (RH1 r)) result
       (LN (Pair a b), Q0) -> S4 l1 L3E (L4E (Final3 a b r))
-  L3R (Level (LH1 kl) kr) m1 m2 m3 -> case m3 of
+  L3R (Level (LH1 kl) kr) m1 m2 m3 ->
+    bestowR l1 (Level (LH1 kl) kr) $ case m3 of
     L3LL (Level (LH0 ()) (RH1 r)) n1 n2 n3 ->
       case npopl (push2l n1 n2 n3 l4) of
         (LN l, QN result) ->
-          bestowR l1 (Level (LH1 kl) kr) $
-          bestow2L m1 m2 (Level (LH2 l) (RH1 r)) $
-          result
+          bestow2L m1 m2 (Level (LH2 l) (RH1 r)) result
         (LN (Pair a b), Q0) ->
-          S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3LE) (L4E (Final3 a b r))
-    L3LE -> S4 l1 (L3R (Level (LH1 kl) kr) m1 m2 L3LE) $ case l4 of
+          push2r m1 m2 L3LE (L4E (Final3 a b r))
+    L3LE -> push2r m1 m2 L3LE $ case l4 of
       L4 (Level (LH0 ()) r) rest -> case npopl rest of
           (LN l, QN new) -> L4 (Level (LH2 l) r) new
           (LN (Pair a b), Q0) -> case r of
@@ -437,16 +436,15 @@ fix0r (QN (S4 l1 l3 l4)) = QN $ case l3 of
     case npopr (push2r m1 m2 m3 l4) of
       (LN r, QN result) -> bestowR l1 (Level (LH1 l) (RH2 r)) result
       (LN (Pair a b), Q0) -> S4 l1 L3E (L4E (Final3 l a b))
-  L3L (Level kl (RH1 kr)) m1 m2 m3 -> case m3 of
+  L3L (Level kl (RH1 kr)) m1 m2 m3 ->
+    bestowL l1 (Level kl (RH1 kr)) $ case m3 of
     L3RL (Level (LH1 l) (RH0 ())) n1 n2 n3 ->
       case npopr (push2r n1 n2 n3 l4) of
         (LN r, QN result) ->
-          bestowL l1 (Level kl (RH1 kr)) $
-          bestow2R m1 m2 (Level (LH1 l) (RH2 r)) $
-          result
+          bestow2R m1 m2 (Level (LH1 l) (RH2 r)) result
         (LN (Pair a b), Q0) ->
-          S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3RE) (L4E (Final3 l a b))
-    L3RE -> S4 l1 (L3L (Level kl (RH1 kr)) m1 m2 L3RE) $ case l4 of
+          push2l m1 m2 L3RE (L4E (Final3 l a b))
+    L3RE -> push2l m1 m2 L3RE $ case l4 of
       L4 (Level l (RH0 ())) rest -> case npopr rest of
           (LN r, QN new) -> L4 (Level l (RH2 r)) new
           (LN (Pair a b), Q0) -> case l of
