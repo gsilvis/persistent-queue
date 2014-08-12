@@ -77,7 +77,7 @@ frankly quite painful to look at.  I'm sorry.
 
 -------------------
 
-I'm using GADTs for quite a few different purposes in this code.  The first is
+I'm using GADTs for two different purposes in this code.  The first is
 to make it possible for each buffer to contain pairs of the elements of the
 buffer above it.  This would be fairly straight-forward if the entire
 structure were a stack.  Unfortunately it isn't.  So, type-level natural
@@ -85,15 +85,6 @@ numbers it is!
 
 The second purpose is to keep track of the 0-2-alternation invariant: this is
 what L0Exposed, L2Exposed, R0Exposed, and R2Exposed are for.
-
-The third purpose is to deal with the right-left alternation, and should
-probably really be removed, and turned into an honest type distinction.  This
-is what Leftist and Rightist are for.
-
-Finally, the buffer type uses the types LModifying, LUnmodifying, RModifying,
-and RUnmodifying, to condense some code slightly.  They probably aren't
-necessary, but they aren't causing any typechecking problems, unlike Leftist
-and Rightist.
 
 -------------------
 
