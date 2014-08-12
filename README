@@ -88,8 +88,7 @@ what L0Exposed, L2Exposed, R0Exposed, and R2Exposed are for.
 
 -------------------
 
-This code compiles correctly under GHC-7.8.2, and definitely fails to under
-GHC-7.4.1 (both tested in Debian Wheezy)
-
-Under GHC-7.8.2, a fair number of "incomplete case statement" warnings are
-generated, but filling in any of those causes "unreachable code".  Peculiar.
+This code compiles correctly under both GHC-7.8.2 and GHC-7.4.1, as tested in
+Debian Wheezy.  In both cases, a fair number of "incomplete case statement"
+warnings are generated, but filling in any of those causes "unreachable code".
+Peculiar.
