@@ -134,19 +134,21 @@ bestowL :: L1 a top mid ->
            (LHM a mid lreq lexp, RHU a mid) ->
            S4 a (Succ mid) lreq rexp ->
            S4 a top lexp rexp
-bestowL ones level (S4 l1 l3 l4) = case l3 of
-  L3L under m1 m2 m3 -> S4 ones (L3L level l1 (L2LL under m1 m2) m3) l4
-  L3R under m1 m2 m3 -> S4 ones (L3L level l1 L2LE (L3RL under m1 m2 m3)) l4
-  L3E -> S4 ones (L3L level l1 L2LE L3RE) l4
+bestowL ones level (S4 l1 l3 l4) = S4 ones result l4 where
+  result = case l3 of
+    L3L under m1 m2 m3 -> L3L level l1 (L2LL under m1 m2) m3
+    L3R under m1 m2 m3 -> L3L level l1 L2LE (L3RL under m1 m2 m3)
+    L3E -> L3L level l1 L2LE L3RE
 
 bestowR :: L1 a top mid ->
            (LHU a mid, RHM a mid rreq rexp) ->
            S4 a (Succ mid) lexp rreq ->
            S4 a top lexp rexp
-bestowR ones level (S4 l1 l3 l4) = case l3 of
-  L3R under m1 m2 m3 -> S4 ones (L3R level l1 (L2RL under m1 m2) m3) l4
-  L3L under m1 m2 m3 -> S4 ones (L3R level l1 L2RE (L3LL under m1 m2 m3)) l4
-  L3E -> S4 ones (L3R level l1 L2RE L3LE) l4
+bestowR ones level (S4 l1 l3 l4) = S4 ones result l4 where
+  result = case l3 of
+    L3R under m1 m2 m3 -> L3R level l1 (L2RL under m1 m2) m3
+    L3L under m1 m2 m3 -> L3R level l1 L2RE (L3LL under m1 m2 m3)
+    L3E -> L3R level l1 L2RE L3LE
 
 
 
@@ -165,8 +167,7 @@ push2l :: L1 a n1 n2 ->
           S4 a n1 lexp rexp
 push2l l1 (L2LE) (L3RE) l4 = S4 l1 L3E l4
 push2l l1 (L2LE) (L3RL lev m1 m2 m3) l4 = S4 l1 (L3R lev m1 m2 m3) l4
-push2l l1 (L2LL level m1 m2) l3 l4 =
-  S4 l1 (L3L level m1 m2 l3) l4
+push2l l1 (L2LL level m1 m2) l3 l4 = S4 l1 (L3L level m1 m2 l3) l4
 
 push2r :: L1 a n1 n2 ->
           L2R a n2 n3 rmid rexp ->
@@ -175,8 +176,7 @@ push2r :: L1 a n1 n2 ->
           S4 a n1 lexp rexp
 push2r l1 (L2RE) (L3LE) l4 = S4 l1 L3E l4
 push2r l1 (L2RE) (L3LL lev m1 m2 m3) l4 = S4 l1 (L3L lev m1 m2 m3) l4
-push2r l1 (L2RL level m1 m2) l3 l4 =
-  S4 l1 (L3R level m1 m2 l3) l4
+push2r l1 (L2RL level m1 m2) l3 l4 = S4 l1 (L3R level m1 m2 l3) l4
 
 bestow2L :: L1 a n1 n2 ->
             L2R a n2 n3 rreq rexp ->
@@ -185,10 +185,11 @@ bestow2L :: L1 a n1 n2 ->
             S4 a n1 lexp rexp
 bestow2L ones twos level (S4 l1 l3 l4) = case twos of
   L2RE -> bestowL ones level (S4 l1 l3 l4)
-  L2RL upper m1 m2 -> case l3 of
-    L3E -> S4 ones (L3R upper m1 m2 (L3LL level l1 L2LE L3RE)) l4
-    L3R lower n1 n2 n3 -> S4 ones (L3R upper m1 m2 (L3LL level l1 L2LE (L3RL lower n1 n2 n3))) l4
-    L3L lower n1 n2 n3 -> S4 ones (L3R upper m1 m2 (L3LL level l1 (L2LL lower n1 n2) n3)) l4
+  L2RL upper m1 m2 -> S4 ones (L3R upper m1 m2 result) l4 where
+    result = case l3 of
+      L3E -> L3LL level l1 L2LE L3RE
+      L3R lower n1 n2 n3 -> L3LL level l1 L2LE (L3RL lower n1 n2 n3)
+      L3L lower n1 n2 n3 -> L3LL level l1 (L2LL lower n1 n2) n3
 
 bestow2R :: L1 a n1 n2 ->
             L2L a n2 n3 lreq lexp ->
@@ -197,10 +198,11 @@ bestow2R :: L1 a n1 n2 ->
             S4 a n1 lexp rexp
 bestow2R ones twos level (S4 l1 l3 l4) = case twos of
   L2LE -> bestowR ones level (S4 l1 l3 l4)
-  L2LL upper m1 m2 -> case l3 of
-    L3E -> S4 ones (L3L upper m1 m2 (L3RL level l1 L2RE L3LE)) l4
-    L3L lower n1 n2 n3 -> S4 ones (L3L upper m1 m2 (L3RL level l1 L2RE (L3LL lower n1 n2 n3))) l4
-    L3R lower n1 n2 n3 -> S4 ones (L3L upper m1 m2 (L3RL level l1 (L2RL lower n1 n2) n3)) l4
+  L2LL upper m1 m2 -> S4 ones (L3L upper m1 m2 result) l4 where
+    result = case l3 of
+      L3E -> L3RL level l1 L2RE L3LE
+      L3L lower n1 n2 n3 -> L3RL level l1 L2RE (L3LL lower n1 n2 n3)
+      L3R lower n1 n2 n3 -> L3RL level l1 (L2RL lower n1 n2) n3
 
 
 npushl' :: NLayered n Pair a ->
