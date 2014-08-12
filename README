@@ -91,4 +91,7 @@ what L0Exposed, L2Exposed, R0Exposed, and R2Exposed are for.
 This code compiles correctly under both GHC-7.8.2 and GHC-7.4.1, as tested in
 Debian Wheezy.  In both cases, a fair number of "incomplete case statement"
 warnings are generated, but filling in any of those causes "unreachable code".
-Peculiar.
+This, I believe, is an instance of
+https://ghc.haskell.org/trac/ghc/ticket/3927
+
+
