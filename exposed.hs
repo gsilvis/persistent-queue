@@ -19,9 +19,6 @@ data LUnmodifying
 data RModifying
 data RUnmodifying
 
-data Leftist
-data Rightist
-
 data LHalf a :: * -> * -> * -> * -> * where
   LH0 :: () ->
          LHalf a n LModifying L2Exposed L0Exposed
