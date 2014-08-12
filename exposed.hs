@@ -316,3 +316,5 @@ popl (Q20 (QN q)) = Just $ case npopl q of
   (L0 a, new) -> (a, Q00 new)
 popl (Q22 (QN q)) = Just $ case npopl q of
   (L0 a, new) -> (a, Q02 new)
+popl (Q20 Q0) = Nothing
+popl (Q22 Q0) = Nothing
