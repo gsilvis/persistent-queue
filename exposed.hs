@@ -110,21 +110,16 @@ data S4 a :: * -> * -> * -> * where
         L4 a bot lbot rbot ->
         S4 a top ltop rtop
 
-data Queue' a :: * -> * -> * -> * where
-  Q0 :: Queue' a n lexposure rexposure
-  QN :: S4 a n lexposure rexposure ->
-        Queue' a n lexposure rexposure
-
-newtype Queue a = Queue (Queue' a Zero L0Exposed R0Exposed)
+data Queue a = Q0 | QN (S4 a Zero L0Exposed R0Exposed)
 
 empty :: Queue a
-empty = Queue Q0
+empty = Q0
 
 singleton :: a -> Queue a
-singleton a = Queue (QN (S4 L1E L3E (L4E (Final1 (L0 a)))))
+singleton a = QN (S4 L1E L3E (L4E (Final1 (L0 a))))
 
 doubleton :: a -> Queue a
-doubleton a = Queue (QN (S4 L1E L3E (L4E (Final2 (L0 a) (L0 a)))))
+doubleton a = QN (S4 L1E L3E (L4E (Final2 (L0 a) (L0 a))))
 
 
 bestowL :: L1 a top mid ->
@@ -202,10 +197,10 @@ bestow2R ones twos level (S4 l1 l3 l4) = case twos of
       L3R lower n1 n2 n3 -> L3RL level l1 (L2RL lower n1 n2) n3
 
 
-npushl' :: NLayered n Pair a ->
+npushl :: NLayered n Pair a ->
            S4 a n L0Exposed rexposure ->
            S4 a n L2Exposed rexposure
-npushl' a (S4 l1 l3 l4) = case l1 of
+npushl a (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 r) m1 ->
     pushlevel (LevelMU (LH2 (Pair a l), RH1 r)) (S4 m1 l3 l4)
   L1E -> case l3 of
@@ -226,60 +221,53 @@ npushl' a (S4 l1 l3 l4) = case l1 of
         L3E (L4E (Final2 (LN (Pair p q)) (LN (Pair r s))))
 
 
-
-npushl :: NLayered n Pair a ->
-          Queue' a n L0Exposed rexposure ->
-          Queue' a n L2Exposed rexposure
-npushl a Q0 = QN (S4 L1E L3E (L4E (Final1 a)))
-npushl a (QN q) = QN (npushl' a q)
-
-fix2l :: Queue' a n L2Exposed rexposure ->
-         Queue' a n L0Exposed rexposure
-fix2l Q0 = Q0
-fix2l (QN (S4 l1 l3 l4)) = QN $ case l3 of
+fix2l :: S4 a n L2Exposed rexposure ->
+         S4 a n L0Exposed rexposure
+fix2l (S4 l1 l3 l4) = case l3 of
   L3L (LH2 l, RH1 r) m1 m2 m3 ->
     bestowL l1 (LH0 (), RH1 r) $
-    npushl' (LN l) $
+    npushl (LN l) $
     push2l m1 m2 m3 l4
   L3R level m1 m2 m3 ->
     bestowR l1 level $ case m3 of
     L3LL (LH2 l, RH1 r) n1 n2 n3 ->
       bestow2L m1 m2 (LH0 (), RH1 r) $
-      npushl' (LN l) $
+      npushl (LN l) $
       push2l n1 n2 n3 l4
     L3LE -> push2r m1 m2 L3LE $ case l4 of
       L4 (LH2 l, r) rest ->
-        L4 (LH0 (), r) (npushl' (LN l) rest)
+        L4 (LH0 (), r) (npushl (LN l) rest)
       L4E final -> L4E final
   L3E -> S4 l1 L3E $ case l4 of
     L4 (LH2 l, r) rest ->
-      L4 (LH0 (), r) (npushl' (LN l) rest)
+      L4 (LH0 (), r) (npushl (LN l) rest)
     L4E final -> L4E final
 
 
 pushl :: a -> Queue a -> Queue a
-pushl a (Queue q) = Queue (fix2l (npushl (L0 a) q))
+pushl a Q0 = QN (S4 L1E L3E (L4E (Final1 (L0 a))))
+pushl a (QN q) = QN (fix2l (npushl (L0 a) q))
 
 npopl :: S4 a n L2Exposed rexposure ->
-         (NLayered n Pair a, Queue' a n L0Exposed rexposure)
+         (NLayered n Pair a, Maybe (S4 a n L0Exposed rexposure))
 npopl (S4 l1 l3 l4) = case l1 of
-  L1L (LH1 a, RH1 r) m1 -> (a, QN rest) where
+  L1L (LH1 a, RH1 r) m1 -> (a, Just rest) where
     rest = pushlevel (LevelMU (LH0 (), RH1 r)) (S4 m1 l3 l4)
   L1E -> case l3 of
-    L3L (LH2 (Pair a l), RH1 r) m1 m2 m3 -> (a, QN rest) where
+    L3L (LH2 (Pair a l), RH1 r) m1 m2 m3 -> (a, Just rest) where
       rest = pushlevel (LevelUU (LH1 l, RH1 r)) $
              push2l m1 m2 m3 l4
-    L3R (LH1 a, r) m1 m2 m3 -> (a, QN rest) where
+    L3R (LH1 a, r) m1 m2 m3 -> (a, Just rest) where
       rest = pushlevel (LevelMM (LH0 (), r)) $
              push2r m1 m2 m3 l4
     L3E -> case l4 of
-      L4 (LH2 (Pair a l), r) inner -> (a, QN rest) where
+      L4 (LH2 (Pair a l), r) inner -> (a, Just rest) where
         rest = pushlevel (LevelUM (LH1 l, r)) inner
-      L4E (Final5 a b c d e) -> (a, QN (S4 L1E L3E (L4E (Final4 b c d e))))
-      L4E (Final4 a b c d) ->   (a, QN (S4 L1E L3E (L4E (Final3 b c d))))
-      L4E (Final3 a b c) ->     (a, QN (S4 L1E L3E (L4E (Final2 b c))))
-      L4E (Final2 a b) ->       (a, QN (S4 L1E L3E (L4E (Final1 b))))
-      L4E (Final1 a) -> (a, Q0)
+      L4E (Final5 a b c d e) -> (a, Just (S4 L1E L3E (L4E (Final4 b c d e))))
+      L4E (Final4 a b c d) ->   (a, Just (S4 L1E L3E (L4E (Final3 b c d))))
+      L4E (Final3 a b c) ->     (a, Just (S4 L1E L3E (L4E (Final2 b c))))
+      L4E (Final2 a b) ->       (a, Just (S4 L1E L3E (L4E (Final1 b))))
+      L4E (Final1 a) -> (a, Nothing)
 
 
 
@@ -288,42 +276,43 @@ fix0l :: S4 a n L0Exposed rexposure ->
 fix0l (S4 l1 l3 l4) = case l3 of
   L3L (LH0 (), RH1 r) m1 m2 m3 ->
     case npopl (push2l m1 m2 m3 l4) of
-      (LN l, QN result) -> bestowL l1 (LH2 l, RH1 r) result
-      (LN (Pair a b), Q0) -> S4 l1 L3E (L4E (Final3 a b r))
+      (LN l, Just result) -> bestowL l1 (LH2 l, RH1 r) result
+      (LN (Pair a b), Nothing) -> S4 l1 L3E (L4E (Final3 a b r))
   L3R level m1 m2 m3 ->
     bestowR l1 level $ case m3 of
     L3LL (LH0 (), RH1 r) n1 n2 n3 ->
       case npopl (push2l n1 n2 n3 l4) of
-        (LN l, QN result) ->
+        (LN l, Just result) ->
           bestow2L m1 m2 (LH2 l, RH1 r) result
-        (LN (Pair a b), Q0) ->
+        (LN (Pair a b), Nothing) ->
           push2r m1 m2 L3LE (L4E (Final3 a b r))
     L3LE -> push2r m1 m2 L3LE $ case l4 of
       L4 (LH0 (), r) rest -> case npopl rest of
-          (LN l, QN new) -> L4 (LH2 l, r) new
-          (LN (Pair a b), Q0) -> case r of
+          (LN l, Just new) -> L4 (LH2 l, r) new
+          (LN (Pair a b), Nothing) -> case r of
             RH0 () -> L4E (Final2 a b)
             RH2 (Pair q r) -> L4E (Final4 a b q r)
       L4E final -> L4E final
   L3E -> S4 l1 L3E $ case l4 of
     L4 (LH0 (), r) rest -> case npopl rest of
-      (LN l, QN new) -> L4 (LH2 l, r) new
-      (LN (Pair a b), Q0) -> case r of
+      (LN l, Just new) -> L4 (LH2 l, r) new
+      (LN (Pair a b), Nothing) -> case r of
         RH0 () -> L4E (Final2 a b)
         RH2 (Pair q r) -> L4E (Final4 a b q r)
     L4E final -> L4E final
 
 
-
 popl :: Queue a -> Maybe (a, Queue a)
-popl (Queue Q0) = Nothing
-popl (Queue (QN q)) = let (L0 a, q') = npopl (fix0l q) in Just (a, Queue q')
+popl Q0 = Nothing
+popl (QN q) = case npopl (fix0l q) of
+  (L0 a, Nothing) -> Just (a, Q0)
+  (L0 a, Just q) -> Just (a, QN q)
 
 
-npushr' :: NLayered n Pair a ->
+npushr :: NLayered n Pair a ->
            S4 a n lexposure R0Exposed ->
            S4 a n lexposure R2Exposed
-npushr' a (S4 l1 l3 l4) = case l1 of
+npushr a (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 r) m1 ->
     pushlevel (LevelUM (LH1 l, RH2 (Pair r a))) (S4 m1 l3 l4)
   L1E -> case l3 of
@@ -344,59 +333,52 @@ npushr' a (S4 l1 l3 l4) = case l1 of
         L3E (L4E (Final2 (LN (Pair p q)) (LN (Pair r s))))
 
 
-
-npushr :: NLayered n Pair a ->
-          Queue' a n lexposure R0Exposed ->
-          Queue' a n lexposure R2Exposed
-npushr a Q0 = QN (S4 L1E L3E (L4E (Final1 a)))
-npushr a (QN q) = QN (npushr' a q)
-
-fix2r :: Queue' a n lexposure R2Exposed ->
-         Queue' a n lexposure R0Exposed
-fix2r Q0 = Q0
-fix2r (QN (S4 l1 l3 l4)) = QN $ case l3 of
+fix2r :: S4 a n lexposure R2Exposed ->
+         S4 a n lexposure R0Exposed
+fix2r (S4 l1 l3 l4) = case l3 of
   L3R (LH1 l, RH2 r) m1 m2 m3 ->
     bestowR l1 (LH1 l, RH0 ()) $
-    npushr' (LN r) $
+    npushr (LN r) $
     push2r m1 m2 m3 l4
   L3L level m1 m2 m3 -> bestowL l1 level $ case m3 of
     L3RL (LH1 l, RH2 r) n1 n2 n3 ->
       bestow2R m1 m2 (LH1 l, RH0 ()) $
-      npushr' (LN r) $
+      npushr (LN r) $
       push2r n1 n2 n3 l4
     L3RE -> push2l m1 m2 L3RE $ case l4 of
       L4 (l, RH2 r) rest ->
-        L4 (l, RH0 ()) (npushr' (LN r) rest)
+        L4 (l, RH0 ()) (npushr (LN r) rest)
       L4E final -> L4E final
   L3E -> S4 l1 L3E $ case l4 of
     L4 (l, RH2 r) rest ->
-      L4 (l, RH0 ()) (npushr' (LN r) rest)
+      L4 (l, RH0 ()) (npushr (LN r) rest)
     L4E final -> L4E final
 
 pushr :: a -> Queue a -> Queue a
-pushr a (Queue q) = Queue (fix2r (npushr (L0 a) q))
+pushr a Q0 = QN (S4 L1E L3E (L4E (Final1 (L0 a))))
+pushr a (QN q) = QN (fix2r (npushr (L0 a) q))
 
 
 npopr :: S4 a n lexposure R2Exposed ->
-         (NLayered n Pair a, Queue' a n lexposure R0Exposed)
+         (NLayered n Pair a, Maybe (S4 a n lexposure R0Exposed))
 npopr (S4 l1 l3 l4) = case l1 of
-  L1L (LH1 l, RH1 a) m1 -> (a, QN rest) where
+  L1L (LH1 l, RH1 a) m1 -> (a, Just rest) where
     rest = pushlevel (LevelUM (LH1 l, RH0 ())) (S4 m1 l3 l4)
   L1E -> case l3 of
-    L3R (LH1 l, RH2 (Pair r a)) m1 m2 m3 -> (a, QN rest) where
+    L3R (LH1 l, RH2 (Pair r a)) m1 m2 m3 -> (a, Just rest) where
       rest = pushlevel (LevelUU (LH1 l, RH1 r)) $
              push2r m1 m2 m3 l4
-    L3L (l, RH1 a) m1 m2 m3 -> (a, QN rest) where
+    L3L (l, RH1 a) m1 m2 m3 -> (a, Just rest) where
       rest = pushlevel (LevelMM (l, RH0 ())) $
              push2l m1 m2 m3 l4
     L3E -> case l4 of
-      L4 (l, RH2 (Pair r a)) inner -> (a, QN rest) where
+      L4 (l, RH2 (Pair r a)) inner -> (a, Just rest) where
         rest = pushlevel (LevelMU (l, RH1 r)) inner
-      L4E (Final5 v w x y z) -> (z, QN (S4 L1E L3E (L4E (Final4 v w x y))))
-      L4E (Final4   w x y z) -> (z, QN (S4 L1E L3E (L4E (Final3   w x y))))
-      L4E (Final3     x y z) -> (z, QN (S4 L1E L3E (L4E (Final2     x y))))
-      L4E (Final2       y z) -> (z, QN (S4 L1E L3E (L4E (Final1       y))))
-      L4E (Final1         z) -> (z, Q0)
+      L4E (Final5 v w x y z) -> (z, Just (S4 L1E L3E (L4E (Final4 v w x y))))
+      L4E (Final4   w x y z) -> (z, Just (S4 L1E L3E (L4E (Final3   w x y))))
+      L4E (Final3     x y z) -> (z, Just (S4 L1E L3E (L4E (Final2     x y))))
+      L4E (Final2       y z) -> (z, Just (S4 L1E L3E (L4E (Final1       y))))
+      L4E (Final1         z) -> (z, Nothing)
 
 
 fix0r :: S4 a n lexposure R0Exposed ->
@@ -404,31 +386,33 @@ fix0r :: S4 a n lexposure R0Exposed ->
 fix0r (S4 l1 l3 l4) = case l3 of
   L3R (LH1 l, RH0 ()) m1 m2 m3 ->
     case npopr (push2r m1 m2 m3 l4) of
-      (LN r, QN result) -> bestowR l1 (LH1 l, RH2 r) result
-      (LN (Pair a b), Q0) -> S4 l1 L3E (L4E (Final3 l a b))
+      (LN r, Just result) -> bestowR l1 (LH1 l, RH2 r) result
+      (LN (Pair a b), Nothing) -> S4 l1 L3E (L4E (Final3 l a b))
   L3L level m1 m2 m3 -> bestowL l1 level $ case m3 of
     L3RL (LH1 l, RH0 ()) n1 n2 n3 ->
       case npopr (push2r n1 n2 n3 l4) of
-        (LN r, QN result) ->
+        (LN r, Just result) ->
           bestow2R m1 m2 (LH1 l, RH2 r) result
-        (LN (Pair a b), Q0) ->
+        (LN (Pair a b), Nothing) ->
           push2l m1 m2 L3RE (L4E (Final3 l a b))
     L3RE -> push2l m1 m2 L3RE $ case l4 of
       L4 (l, RH0 ()) rest -> case npopr rest of
-          (LN r, QN new) -> L4 (l, RH2 r) new
-          (LN (Pair a b), Q0) -> case l of
+          (LN r, Just new) -> L4 (l, RH2 r) new
+          (LN (Pair a b), Nothing) -> case l of
             LH0 () -> L4E (Final2 a b)
             LH2 (Pair q r) -> L4E (Final4 q r a b)
       L4E final -> L4E final
   L3E -> S4 l1 L3E $ case l4 of
     L4 (l, RH0 ()) rest -> case npopr rest of
-      (LN r, QN new) -> L4 (l, RH2 r) new
-      (LN (Pair a b), Q0) -> case l of
+      (LN r, Just new) -> L4 (l, RH2 r) new
+      (LN (Pair a b), Nothing) -> case l of
         LH0 () -> L4E (Final2 a b)
         LH2 (Pair q r) -> L4E (Final4 q r a b)
     L4E final -> L4E final
 
 
 popr :: Queue a -> Maybe (a, Queue a)
-popr (Queue Q0) = Nothing
-popr (Queue (QN q)) = let (L0 a, q') = npopr (fix0r q) in Just (a, Queue q')
+popr Q0 = Nothing
+popr (QN q) = case npopr (fix0r q) of
+  (L0 a, Nothing) -> Just (a, Q0)
+  (L0 a, Just q) -> Just (a, QN q)
