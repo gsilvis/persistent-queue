@@ -115,19 +115,16 @@ data Queue' a :: * -> * -> * -> * where
   QN :: S4 a n lexposure rexposure ->
         Queue' a n lexposure rexposure
 
-data Queue a = Q00 (Queue' a Zero L0Exposed R0Exposed)
-             | Q02 (Queue' a Zero L0Exposed R2Exposed)
-             | Q20 (Queue' a Zero L2Exposed R0Exposed)
-             | Q22 (Queue' a Zero L2Exposed R2Exposed)
+newtype Queue a = Queue (Queue' a Zero L0Exposed R0Exposed)
 
 empty :: Queue a
-empty = Q00 Q0
+empty = Queue Q0
 
 singleton :: a -> Queue a
-singleton a = Q00 (QN (S4 L1E L3E (L4E (Final1 (L0 a)))))
+singleton a = Queue (QN (S4 L1E L3E (L4E (Final1 (L0 a)))))
 
 doubleton :: a -> Queue a
-doubleton a = Q00 (QN (S4 L1E L3E (L4E (Final2 (L0 a) (L0 a)))))
+doubleton a = Queue (QN (S4 L1E L3E (L4E (Final2 (L0 a) (L0 a)))))
 
 
 bestowL :: L1 a top mid ->
@@ -261,11 +258,7 @@ fix2l (QN (S4 l1 l3 l4)) = QN $ case l3 of
 
 
 pushl :: a -> Queue a -> Queue a
-pushl a (Q00 q) = Q20 (npushl (L0 a) q)
-pushl a (Q02 q) = Q22 (npushl (L0 a) q)
-pushl a (Q20 q) = Q20 (npushl (L0 a) (fix2l q))
-pushl a (Q22 q) = Q22 (npushl (L0 a) (fix2l q))
-
+pushl a (Queue q) = Queue (fix2l (npushl (L0 a) q))
 
 npopl :: S4 a n L2Exposed rexposure ->
          (NLayered n Pair a, Queue' a n L0Exposed rexposure)
@@ -290,10 +283,9 @@ npopl (S4 l1 l3 l4) = case l1 of
 
 
 
-fix0l :: Queue' a n L0Exposed rexposure ->
-         Queue' a n L2Exposed rexposure
-fix0l Q0 = Q0
-fix0l (QN (S4 l1 l3 l4)) = QN $ case l3 of
+fix0l :: S4 a n L0Exposed rexposure ->
+         S4 a n L2Exposed rexposure
+fix0l (S4 l1 l3 l4) = case l3 of
   L3L (LH0 (), RH1 r) m1 m2 m3 ->
     case npopl (push2l m1 m2 m3 l4) of
       (LN l, QN result) -> bestowL l1 (LH2 l, RH1 r) result
@@ -323,17 +315,9 @@ fix0l (QN (S4 l1 l3 l4)) = QN $ case l3 of
 
 
 
-
 popl :: Queue a -> Maybe (a, Queue a)
-popl (Q00 q) = popl (Q20 (fix0l q))
-popl (Q02 q) = popl (Q22 (fix0l q))
-popl (Q20 (QN q)) = Just $ case npopl q of
-  (L0 a, new) -> (a, Q00 new)
-popl (Q22 (QN q)) = Just $ case npopl q of
-  (L0 a, new) -> (a, Q02 new)
-popl (Q20 Q0) = Nothing
-popl (Q22 Q0) = Nothing
-
+popl (Queue Q0) = Nothing
+popl (Queue (QN q)) = let (L0 a, q') = npopl (fix0l q) in Just (a, Queue q')
 
 
 npushr' :: NLayered n Pair a ->
@@ -390,10 +374,7 @@ fix2r (QN (S4 l1 l3 l4)) = QN $ case l3 of
     L4E final -> L4E final
 
 pushr :: a -> Queue a -> Queue a
-pushr a (Q00 q) = Q02 (npushr (L0 a) q)
-pushr a (Q20 q) = Q22 (npushr (L0 a) q)
-pushr a (Q02 q) = Q02 (npushr (L0 a) (fix2r q))
-pushr a (Q22 q) = Q22 (npushr (L0 a) (fix2r q))
+pushr a (Queue q) = Queue (fix2r (npushr (L0 a) q))
 
 
 npopr :: S4 a n lexposure R2Exposed ->
@@ -418,10 +399,9 @@ npopr (S4 l1 l3 l4) = case l1 of
       L4E (Final1         z) -> (z, Q0)
 
 
-fix0r :: Queue' a n lexposure R0Exposed ->
-         Queue' a n lexposure R2Exposed
-fix0r Q0 = Q0
-fix0r (QN (S4 l1 l3 l4)) = QN $ case l3 of
+fix0r :: S4 a n lexposure R0Exposed ->
+         S4 a n lexposure R2Exposed
+fix0r (S4 l1 l3 l4) = case l3 of
   L3R (LH1 l, RH0 ()) m1 m2 m3 ->
     case npopr (push2r m1 m2 m3 l4) of
       (LN r, QN result) -> bestowR l1 (LH1 l, RH2 r) result
@@ -450,11 +430,5 @@ fix0r (QN (S4 l1 l3 l4)) = QN $ case l3 of
 
 
 popr :: Queue a -> Maybe (a, Queue a)
-popr (Q00 q) = popr (Q02 (fix0r q))
-popr (Q20 q) = popr (Q22 (fix0r q))
-popr (Q02 (QN q)) = Just $ case npopr q of
-  (L0 a, new) -> (a, Q00 new)
-popr (Q22 (QN q)) = Just $ case npopr q of
-  (L0 a, new) -> (a, Q20 new)
-popr (Q02 Q0) = Nothing
-popr (Q22 Q0) = Nothing
+popr (Queue Q0) = Nothing
+popr (Queue (QN q)) = let (L0 a, q') = npopr (fix0r q) in Just (a, Queue q')
