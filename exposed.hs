@@ -32,16 +32,6 @@ data RHM a :: * -> * -> * -> * where
   RH2 :: Pair (NLayered n Pair a) ->
          RHM a n R0Exposed R2Exposed
 
-data Level' a :: * -> * -> * -> * -> * -> * where
-  LevelUU :: (LHU a n, RHU a n) ->
-             Level' a n lexp lexp rexp rexp
-  LevelUM :: (LHU a n, RHM a n rreq rexp) ->
-             Level' a n lexp lexp rreq rexp
-  LevelMU :: (LHM a n lreq lexp, RHU a n) ->
-             Level' a n lreq lexp rexp rexp
-  LevelMM :: (LHM a n lreq lexp, RHM a n rreq rexp) ->
-             Level' a n lreq lexp rreq rexp
-  
 data L1 a :: * -> * -> * where
   L1E :: L1 a bottom bottom
   L1L :: (LHU a top, RHU a top) ->
@@ -142,15 +132,25 @@ bestowR ones level (S4 l1 l3 l4) = S4 ones result l4 where
     L3L under m1 m2 m3 -> L3R level l1 L2RE (L3LL under m1 m2 m3)
     L3E -> L3R level l1 L2RE L3LE
 
+pushUU :: (LHU a n, RHU a n) ->
+          S4 a (Succ n) lexp rexp ->
+          S4 a n lexp rexp
+pushUU level (S4 l1 l3 l4) = S4 (L1L level l1) l3 l4
 
+pushUM :: (LHU a n, RHM a n rreq rexp) ->
+          S4 a (Succ n) lexp rreq ->
+          S4 a n lexp rexp
+pushUM level body = bestowR L1E level body
 
-pushlevel :: Level' a n lreq lexp rreq rexp ->
-             S4 a (Succ n) lreq rreq ->
-             S4 a n lexp rexp
-pushlevel (LevelUU level) (S4 l1 l3 l4) = S4 (L1L level l1) l3 l4
-pushlevel (LevelUM level) body = bestowR L1E level body
-pushlevel (LevelMU level) body = bestowL L1E level body
-pushlevel (LevelMM level) body = S4 L1E L3E (L4 level body)
+pushMU :: (LHM a n lreq lexp, RHU a n) ->
+          S4 a (Succ n) lreq rexp ->
+          S4 a n lexp rexp
+pushMU level body = bestowL L1E level body
+
+pushMM :: (LHM a n lreq lexp, RHM a n rreq rexp) ->
+          S4 a (Succ n) lreq rreq ->
+          S4 a n lexp rexp
+pushMM level body = S4 L1E L3E (L4 level body)
 
 push2l :: L1 a n1 n2 ->
           L2L a n2 n3 lmid lexp ->
@@ -202,17 +202,16 @@ npushl :: NLayered n Pair a ->
            S4 a n L2Exposed rexposure
 npushl a (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 r) m1 ->
-    pushlevel (LevelMU (LH2 (Pair a l), RH1 r)) (S4 m1 l3 l4)
+    pushMU (LH2 (Pair a l), RH1 r) (S4 m1 l3 l4)
   L1E -> case l3 of
     L3L (LH0 (), RH1 r) m1 m2 m3 ->
-      pushlevel (LevelUU (LH1 a, RH1 r)) $
+      pushUU (LH1 a, RH1 r) $
       push2l m1 m2 m3 l4
     L3R (LH1 l, r) m1 m2 m3 ->
-      pushlevel (LevelMM (LH2 (Pair a l), r)) $
+      pushMM (LH2 (Pair a l), r) $
       push2r m1 m2 m3 l4
     L3E -> case l4 of
-      L4 (LH0 (), r) rest ->
-        pushlevel (LevelUM (LH1 a, r)) rest
+      L4 (LH0 (), r) rest -> pushUM (LH1 a, r) rest
       L4E (Final1 b) ->       S4 L1E L3E (L4E (Final2 a b))
       L4E (Final2 b c) ->     S4 L1E L3E (L4E (Final3 a b c))
       L4E (Final3 b c d) ->   S4 L1E L3E (L4E (Final4 a b c d))
@@ -252,17 +251,17 @@ npopl :: S4 a n L2Exposed rexposure ->
          (NLayered n Pair a, Maybe (S4 a n L0Exposed rexposure))
 npopl (S4 l1 l3 l4) = case l1 of
   L1L (LH1 a, RH1 r) m1 -> (a, Just rest) where
-    rest = pushlevel (LevelMU (LH0 (), RH1 r)) (S4 m1 l3 l4)
+    rest = pushMU (LH0 (), RH1 r) (S4 m1 l3 l4)
   L1E -> case l3 of
     L3L (LH2 (Pair a l), RH1 r) m1 m2 m3 -> (a, Just rest) where
-      rest = pushlevel (LevelUU (LH1 l, RH1 r)) $
+      rest = pushUU (LH1 l, RH1 r) $
              push2l m1 m2 m3 l4
     L3R (LH1 a, r) m1 m2 m3 -> (a, Just rest) where
-      rest = pushlevel (LevelMM (LH0 (), r)) $
+      rest = pushMM (LH0 (), r) $
              push2r m1 m2 m3 l4
     L3E -> case l4 of
       L4 (LH2 (Pair a l), r) inner -> (a, Just rest) where
-        rest = pushlevel (LevelUM (LH1 l, r)) inner
+        rest = pushUM (LH1 l, r) inner
       L4E (Final5 a b c d e) -> (a, Just (S4 L1E L3E (L4E (Final4 b c d e))))
       L4E (Final4 a b c d) ->   (a, Just (S4 L1E L3E (L4E (Final3 b c d))))
       L4E (Final3 a b c) ->     (a, Just (S4 L1E L3E (L4E (Final2 b c))))
@@ -314,17 +313,16 @@ npushr :: NLayered n Pair a ->
            S4 a n lexposure R2Exposed
 npushr a (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 r) m1 ->
-    pushlevel (LevelUM (LH1 l, RH2 (Pair r a))) (S4 m1 l3 l4)
+    pushUM (LH1 l, RH2 (Pair r a)) (S4 m1 l3 l4)
   L1E -> case l3 of
     L3R (LH1 l, RH0 ()) m1 m2 m3 ->
-      pushlevel (LevelUU (LH1 l, RH1 a)) $
+      pushUU (LH1 l, RH1 a) $
       push2r m1 m2 m3 l4
     L3L (l, RH1 r) m1 m2 m3 ->
-      pushlevel (LevelMM (l, RH2 (Pair r a))) $
+      pushMM (l, RH2 (Pair r a)) $
       push2l m1 m2 m3 l4
     L3E -> case l4 of
-      L4 (l, RH0 ()) rest ->
-        pushlevel (LevelMU (l, RH1 a)) rest
+      L4 (l, RH0 ()) rest -> pushMU (l, RH1 a) rest
       L4E (Final1 b) ->       S4 L1E L3E (L4E (Final2 b a))
       L4E (Final2 b c) ->     S4 L1E L3E (L4E (Final3 b c a))
       L4E (Final3 b c d) ->   S4 L1E L3E (L4E (Final4 b c d a))
@@ -363,17 +361,17 @@ npopr :: S4 a n lexposure R2Exposed ->
          (NLayered n Pair a, Maybe (S4 a n lexposure R0Exposed))
 npopr (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 a) m1 -> (a, Just rest) where
-    rest = pushlevel (LevelUM (LH1 l, RH0 ())) (S4 m1 l3 l4)
+    rest = pushUM (LH1 l, RH0 ()) (S4 m1 l3 l4)
   L1E -> case l3 of
     L3R (LH1 l, RH2 (Pair r a)) m1 m2 m3 -> (a, Just rest) where
-      rest = pushlevel (LevelUU (LH1 l, RH1 r)) $
+      rest = pushUU (LH1 l, RH1 r) $
              push2r m1 m2 m3 l4
     L3L (l, RH1 a) m1 m2 m3 -> (a, Just rest) where
-      rest = pushlevel (LevelMM (l, RH0 ())) $
+      rest = pushMM (l, RH0 ()) $
              push2l m1 m2 m3 l4
     L3E -> case l4 of
       L4 (l, RH2 (Pair r a)) inner -> (a, Just rest) where
-        rest = pushlevel (LevelMU (l, RH1 r)) inner
+        rest = pushMU (l, RH1 r) inner
       L4E (Final5 v w x y z) -> (z, Just (S4 L1E L3E (L4E (Final4 v w x y))))
       L4E (Final4   w x y z) -> (z, Just (S4 L1E L3E (L4E (Final3   w x y))))
       L4E (Final3     x y z) -> (z, Just (S4 L1E L3E (L4E (Final2     x y))))
