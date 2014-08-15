@@ -197,10 +197,10 @@ bestow2R ones twos level (S4 l1 l3 l4) = case twos of
       L3R lower n1 n2 n3 -> L3RL level l1 (L2RL lower n1 n2) n3
 
 
-npushl :: NLayered n Pair a ->
-           S4 a n L0Exposed rexposure ->
-           S4 a n L2Exposed rexposure
-npushl a (S4 l1 l3 l4) = case l1 of
+naiveInjectLeft :: NLayered n Pair a ->
+                   S4 a n L0Exposed rexposure ->
+                   S4 a n L2Exposed rexposure
+naiveInjectLeft a (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 r) m1 ->
     pushMU (LH2 (Pair a l), RH1 r) (S4 m1 l3 l4)
   L1E -> case l3 of
@@ -219,34 +219,34 @@ npushl a (S4 l1 l3 l4) = case l1 of
       L4E (Final5 p q r s b) -> S4 (L1L (LH1 a, RH1 b) L1E)
         L3E (L4E (Final2 (LN (Pair p q)) (LN (Pair r s))))
 
-fix2l :: S4 a n L2Exposed rexposure ->
-         S4 a n L0Exposed rexposure
-fix2l (S4 l1 l3 l4) = case l3 of
+fix2ExposureLeft :: S4 a n L2Exposed rexposure ->
+                    S4 a n L0Exposed rexposure
+fix2ExposureLeft (S4 l1 l3 l4) = case l3 of
   L3L (LH2 l, RH1 r) m1 m2 m3 ->
     bestowL l1 (LH0 (), RH1 r) $
-    npushl (LN l) $
+    naiveInjectLeft (LN l) $
     push2l m1 m2 m3 l4
   L3R level m1 m2 m3 -> bestowR l1 level $ case m3 of
     L3LL (LH2 l, RH1 r) n1 n2 n3 ->
       bestow2L m1 m2 (LH0 (), RH1 r) $
-      npushl (LN l) $
+      naiveInjectLeft (LN l) $
       push2l n1 n2 n3 l4
     L3LE -> push2r m1 m2 L3LE $ case l4 of
       L4 (LH2 l, r) rest ->
-        L4 (LH0 (), r) (npushl (LN l) rest)
+        L4 (LH0 (), r) (naiveInjectLeft (LN l) rest)
       L4E final -> L4E final
   L3E -> S4 l1 L3E $ case l4 of
     L4 (LH2 l, r) rest ->
-      L4 (LH0 (), r) (npushl (LN l) rest)
+      L4 (LH0 (), r) (naiveInjectLeft (LN l) rest)
     L4E final -> L4E final
 
-pushl :: a -> Queue a -> Queue a
-pushl a Q0 = QN (S4 L1E L3E (L4E (Final1 (L0 a))))
-pushl a (QN q) = QN (fix2l (npushl (L0 a) q))
+injectLeft :: a -> Queue a -> Queue a
+injectLeft a Q0 = QN (S4 L1E L3E (L4E (Final1 (L0 a))))
+injectLeft a (QN q) = QN (fix2ExposureLeft (naiveInjectLeft (L0 a) q))
 
-npopl :: S4 a n L2Exposed rexposure ->
-         (NLayered n Pair a, Maybe (S4 a n L0Exposed rexposure))
-npopl (S4 l1 l3 l4) = case l1 of
+naiveEjectLeft :: S4 a n L2Exposed rexposure ->
+                  (NLayered n Pair a, Maybe (S4 a n L0Exposed rexposure))
+naiveEjectLeft (S4 l1 l3 l4) = case l1 of
   L1L (LH1 a, RH1 r) m1 -> (a, Just rest) where
     rest = pushMU (LH0 (), RH1 r) (S4 m1 l3 l4)
   L1E -> case l3 of
@@ -264,43 +264,47 @@ npopl (S4 l1 l3 l4) = case l1 of
       L4E (Final2 a b)       -> (a, Just (S4 L1E L3E (L4E (Final1 b))))
       L4E (Final1 a)         -> (a, Nothing)
 
-fix0l :: S4 a n L0Exposed rexposure ->
-         S4 a n L2Exposed rexposure
-fix0l (S4 l1 l3 l4) = case l3 of
-  L3L (LH0 (), RH1 r) m1 m2 m3 -> case npopl (push2l m1 m2 m3 l4) of
-    (LN l, Just result) -> bestowL l1 (LH2 l, RH1 r) result
-    (LN (Pair a b), Nothing) -> S4 l1 L3E (L4E (Final3 a b r))
+fix0ExposureLeft :: S4 a n L0Exposed rexposure ->
+                    S4 a n L2Exposed rexposure
+fix0ExposureLeft (S4 l1 l3 l4) = case l3 of
+  L3L (LH0 (), RH1 r) m1 m2 m3 ->
+    case naiveEjectLeft (push2l m1 m2 m3 l4) of
+      (LN l, Just result) -> bestowL l1 (LH2 l, RH1 r) result
+      (LN (Pair a b), Nothing) -> S4 l1 L3E (L4E (Final3 a b r))
   L3R level m1 m2 m3 -> bestowR l1 level $ case m3 of
-    L3LL (LH0 (), RH1 r) n1 n2 n3 -> case npopl (push2l n1 n2 n3 l4) of
-      (LN l, Just result) ->
-        bestow2L m1 m2 (LH2 l, RH1 r) result
-      (LN (Pair a b), Nothing) ->
-        push2r m1 m2 L3LE (L4E (Final3 a b r))
+    L3LL (LH0 (), RH1 r) n1 n2 n3 ->
+      case naiveEjectLeft (push2l n1 n2 n3 l4) of
+        (LN l, Just result) ->
+          bestow2L m1 m2 (LH2 l, RH1 r) result
+        (LN (Pair a b), Nothing) ->
+          push2r m1 m2 L3LE (L4E (Final3 a b r))
     L3LE -> push2r m1 m2 L3LE $ case l4 of
-      L4 (LH0 (), r) rest -> case npopl rest of
+      L4 (LH0 (), r) rest ->
+        case naiveEjectLeft rest of
+          (LN l, Just new) -> L4 (LH2 l, r) new
+          (LN (Pair a b), Nothing) -> case r of
+            RH0 () -> L4E (Final2 a b)
+            RH2 (Pair q r) -> L4E (Final4 a b q r)
+      L4E final -> L4E final
+  L3E -> S4 l1 L3E $ case l4 of
+    L4 (LH0 (), r) rest ->
+      case naiveEjectLeft rest of
         (LN l, Just new) -> L4 (LH2 l, r) new
         (LN (Pair a b), Nothing) -> case r of
           RH0 () -> L4E (Final2 a b)
           RH2 (Pair q r) -> L4E (Final4 a b q r)
-      L4E final -> L4E final
-  L3E -> S4 l1 L3E $ case l4 of
-    L4 (LH0 (), r) rest -> case npopl rest of
-      (LN l, Just new) -> L4 (LH2 l, r) new
-      (LN (Pair a b), Nothing) -> case r of
-        RH0 () -> L4E (Final2 a b)
-        RH2 (Pair q r) -> L4E (Final4 a b q r)
     L4E final -> L4E final
 
-popl :: Queue a -> Maybe (a, Queue a)
-popl Q0 = Nothing
-popl (QN q) = case npopl (fix0l q) of
+ejectLeft :: Queue a -> Maybe (a, Queue a)
+ejectLeft Q0 = Nothing
+ejectLeft (QN q) = case naiveEjectLeft (fix0ExposureLeft q) of
   (L0 a, Nothing) -> Just (a, Q0)
   (L0 a, Just q) -> Just (a, QN q)
 
-npushr :: NLayered n Pair a ->
-          S4 a n lexposure R0Exposed ->
-          S4 a n lexposure R2Exposed
-npushr z (S4 l1 l3 l4) = case l1 of
+naiveInjectRight :: NLayered n Pair a ->
+                    S4 a n lexposure R0Exposed ->
+                    S4 a n lexposure R2Exposed
+naiveInjectRight z (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 r) m1 ->
     pushUM (LH1 l, RH2 (Pair r z)) (S4 m1 l3 l4)
   L1E -> case l3 of
@@ -319,34 +323,34 @@ npushr z (S4 l1 l3 l4) = case l1 of
       L4E (Final5 a p q r s) -> S4 (L1L (LH1 a, RH1 z) L1E)
         L3E (L4E (Final2 (LN (Pair p q)) (LN (Pair r s))))
 
-fix2r :: S4 a n lexposure R2Exposed ->
-         S4 a n lexposure R0Exposed
-fix2r (S4 l1 l3 l4) = case l3 of
+fix2ExposureRight :: S4 a n lexposure R2Exposed ->
+                     S4 a n lexposure R0Exposed
+fix2ExposureRight (S4 l1 l3 l4) = case l3 of
   L3R (LH1 l, RH2 r) m1 m2 m3 ->
     bestowR l1 (LH1 l, RH0 ()) $
-    npushr (LN r) $
+    naiveInjectRight (LN r) $
     push2r m1 m2 m3 l4
   L3L level m1 m2 m3 -> bestowL l1 level $ case m3 of
     L3RL (LH1 l, RH2 r) n1 n2 n3 ->
       bestow2R m1 m2 (LH1 l, RH0 ()) $
-      npushr (LN r) $
+      naiveInjectRight (LN r) $
       push2r n1 n2 n3 l4
     L3RE -> push2l m1 m2 L3RE $ case l4 of
       L4 (l, RH2 r) rest ->
-        L4 (l, RH0 ()) (npushr (LN r) rest)
+        L4 (l, RH0 ()) (naiveInjectRight (LN r) rest)
       L4E final -> L4E final
   L3E -> S4 l1 L3E $ case l4 of
     L4 (l, RH2 r) rest ->
-      L4 (l, RH0 ()) (npushr (LN r) rest)
+      L4 (l, RH0 ()) (naiveInjectRight (LN r) rest)
     L4E final -> L4E final
 
-pushr :: a -> Queue a -> Queue a
-pushr z Q0 = QN (S4 L1E L3E (L4E (Final1 (L0 z))))
-pushr z (QN q) = QN (fix2r (npushr (L0 z) q))
+injectRight :: a -> Queue a -> Queue a
+injectRight z Q0 = QN (S4 L1E L3E (L4E (Final1 (L0 z))))
+injectRight z (QN q) = QN (fix2ExposureRight (naiveInjectRight (L0 z) q))
 
-npopr :: S4 a n lexposure R2Exposed ->
-         (NLayered n Pair a, Maybe (S4 a n lexposure R0Exposed))
-npopr (S4 l1 l3 l4) = case l1 of
+naiveEjectRight :: S4 a n lexposure R2Exposed ->
+                   (NLayered n Pair a, Maybe (S4 a n lexposure R0Exposed))
+naiveEjectRight (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 z) m1 -> (z, Just rest) where
     rest = pushUM (LH1 l, RH0 ()) (S4 m1 l3 l4)
   L1E -> case l3 of
@@ -364,35 +368,39 @@ npopr (S4 l1 l3 l4) = case l1 of
       L4E (Final2       y z) -> (z, Just (S4 L1E L3E (L4E (Final1       y))))
       L4E (Final1         z) -> (z, Nothing)
 
-fix0r :: S4 a n lexposure R0Exposed ->
-         S4 a n lexposure R2Exposed
-fix0r (S4 l1 l3 l4) = case l3 of
-  L3R (LH1 l, RH0 ()) m1 m2 m3 -> case npopr (push2r m1 m2 m3 l4) of
-    (LN r, Just result) -> bestowR l1 (LH1 l, RH2 r) result
-    (LN (Pair a b), Nothing) -> S4 l1 L3E (L4E (Final3 l a b))
+fix0ExposureRight :: S4 a n lexposure R0Exposed ->
+                     S4 a n lexposure R2Exposed
+fix0ExposureRight (S4 l1 l3 l4) = case l3 of
+  L3R (LH1 l, RH0 ()) m1 m2 m3 ->
+    case naiveEjectRight (push2r m1 m2 m3 l4) of
+      (LN r, Just result) -> bestowR l1 (LH1 l, RH2 r) result
+      (LN (Pair a b), Nothing) -> S4 l1 L3E (L4E (Final3 l a b))
   L3L level m1 m2 m3 -> bestowL l1 level $ case m3 of
-    L3RL (LH1 l, RH0 ()) n1 n2 n3 -> case npopr (push2r n1 n2 n3 l4) of
-      (LN r, Just result) ->
-        bestow2R m1 m2 (LH1 l, RH2 r) result
-      (LN (Pair a b), Nothing) ->
-        push2l m1 m2 L3RE (L4E (Final3 l a b))
+    L3RL (LH1 l, RH0 ()) n1 n2 n3 ->
+      case naiveEjectRight (push2r n1 n2 n3 l4) of
+        (LN r, Just result) ->
+          bestow2R m1 m2 (LH1 l, RH2 r) result
+        (LN (Pair a b), Nothing) ->
+          push2l m1 m2 L3RE (L4E (Final3 l a b))
     L3RE -> push2l m1 m2 L3RE $ case l4 of
-      L4 (l, RH0 ()) rest -> case npopr rest of
+      L4 (l, RH0 ()) rest ->
+        case naiveEjectRight rest of
+          (LN r, Just new) -> L4 (l, RH2 r) new
+          (LN (Pair a b), Nothing) -> case l of
+            LH0 () -> L4E (Final2 a b)
+            LH2 (Pair q r) -> L4E (Final4 q r a b)
+      L4E final -> L4E final
+  L3E -> S4 l1 L3E $ case l4 of
+    L4 (l, RH0 ()) rest ->
+      case naiveEjectRight rest of
         (LN r, Just new) -> L4 (l, RH2 r) new
         (LN (Pair a b), Nothing) -> case l of
           LH0 () -> L4E (Final2 a b)
           LH2 (Pair q r) -> L4E (Final4 q r a b)
-      L4E final -> L4E final
-  L3E -> S4 l1 L3E $ case l4 of
-    L4 (l, RH0 ()) rest -> case npopr rest of
-      (LN r, Just new) -> L4 (l, RH2 r) new
-      (LN (Pair a b), Nothing) -> case l of
-        LH0 () -> L4E (Final2 a b)
-        LH2 (Pair q r) -> L4E (Final4 q r a b)
     L4E final -> L4E final
 
-popr :: Queue a -> Maybe (a, Queue a)
-popr Q0 = Nothing
-popr (QN q) = case npopr (fix0r q) of
+ejectRight :: Queue a -> Maybe (a, Queue a)
+ejectRight Q0 = Nothing
+ejectRight (QN q) = case naiveEjectRight (fix0ExposureRight q) of
   (L0 z, Nothing) -> Just (z, Q0)
   (L0 z, Just q) -> Just (z, QN q)
