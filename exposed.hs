@@ -300,23 +300,23 @@ popl (QN q) = case npopl (fix0l q) of
 npushr :: NLayered n Pair a ->
           S4 a n lexposure R0Exposed ->
           S4 a n lexposure R2Exposed
-npushr a (S4 l1 l3 l4) = case l1 of
+npushr z (S4 l1 l3 l4) = case l1 of
   L1L (LH1 l, RH1 r) m1 ->
-    pushUM (LH1 l, RH2 (Pair r a)) (S4 m1 l3 l4)
+    pushUM (LH1 l, RH2 (Pair r z)) (S4 m1 l3 l4)
   L1E -> case l3 of
     L3R (LH1 l, RH0 ()) m1 m2 m3 ->
-      pushUU (LH1 l, RH1 a) $
+      pushUU (LH1 l, RH1 z) $
       push2r m1 m2 m3 l4
     L3L (l, RH1 r) m1 m2 m3 ->
-      pushMM (l, RH2 (Pair r a)) $
+      pushMM (l, RH2 (Pair r z)) $
       push2l m1 m2 m3 l4
     L3E -> case l4 of
-      L4 (l, RH0 ()) rest -> pushMU (l, RH1 a) rest
-      L4E (Final1 b)         -> S4 L1E L3E (L4E (Final2 b a))
-      L4E (Final2 b c)       -> S4 L1E L3E (L4E (Final3 b c a))
-      L4E (Final3 b c d)     -> S4 L1E L3E (L4E (Final4 b c d a))
-      L4E (Final4 b c d e)   -> S4 L1E L3E (L4E (Final5 b c d e a))
-      L4E (Final5 b p q r s) -> S4 (L1L (LH1 b, RH1 a) L1E)
+      L4 (l, RH0 ()) rest -> pushMU (l, RH1 z) rest
+      L4E (Final1       y) -> S4 L1E L3E (L4E (Final2       y z))
+      L4E (Final2     x y) -> S4 L1E L3E (L4E (Final3     x y z))
+      L4E (Final3   w x y) -> S4 L1E L3E (L4E (Final4   w x y z))
+      L4E (Final4 v w x y) -> S4 L1E L3E (L4E (Final5 v w x y z))
+      L4E (Final5 a p q r s) -> S4 (L1L (LH1 a, RH1 z) L1E)
         L3E (L4E (Final2 (LN (Pair p q)) (LN (Pair r s))))
 
 fix2r :: S4 a n lexposure R2Exposed ->
@@ -341,19 +341,19 @@ fix2r (S4 l1 l3 l4) = case l3 of
     L4E final -> L4E final
 
 pushr :: a -> Queue a -> Queue a
-pushr a Q0 = QN (S4 L1E L3E (L4E (Final1 (L0 a))))
-pushr a (QN q) = QN (fix2r (npushr (L0 a) q))
+pushr z Q0 = QN (S4 L1E L3E (L4E (Final1 (L0 z))))
+pushr z (QN q) = QN (fix2r (npushr (L0 z) q))
 
 npopr :: S4 a n lexposure R2Exposed ->
          (NLayered n Pair a, Maybe (S4 a n lexposure R0Exposed))
 npopr (S4 l1 l3 l4) = case l1 of
-  L1L (LH1 l, RH1 a) m1 -> (a, Just rest) where
+  L1L (LH1 l, RH1 z) m1 -> (z, Just rest) where
     rest = pushUM (LH1 l, RH0 ()) (S4 m1 l3 l4)
   L1E -> case l3 of
-    L3R (LH1 l, RH2 (Pair r a)) m1 m2 m3 -> (a, Just rest) where
+    L3R (LH1 l, RH2 (Pair r z)) m1 m2 m3 -> (z, Just rest) where
       rest = pushUU (LH1 l, RH1 r) $
              push2r m1 m2 m3 l4
-    L3L (l, RH1 a) m1 m2 m3 -> (a, Just rest) where
+    L3L (l, RH1 z) m1 m2 m3 -> (z , Just rest) where
       rest = pushMM (l, RH0 ()) $
              push2l m1 m2 m3 l4
     L3E -> case l4 of
@@ -394,5 +394,5 @@ fix0r (S4 l1 l3 l4) = case l3 of
 popr :: Queue a -> Maybe (a, Queue a)
 popr Q0 = Nothing
 popr (QN q) = case npopr (fix0r q) of
-  (L0 a, Nothing) -> Just (a, Q0)
-  (L0 a, Just q) -> Just (a, QN q)
+  (L0 z, Nothing) -> Just (z, Q0)
+  (L0 z, Just q) -> Just (z, QN q)
